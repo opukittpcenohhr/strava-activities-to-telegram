@@ -62,6 +62,16 @@ def post_last_command(ctx: typer.Context, overrides: Overrides = None) -> None:
         publish_last_activity(db, source, maps, telegram, chat)
 
 
+@app.command('clear-posts-database')
+def clear_posts_database_command(ctx: typer.Context, overrides: Overrides = None) -> None:
+    """Forget every posted activity, keeping the Strava authorization."""
+    config = command_config(ctx, overrides)
+    # Confirm before the database call, so the exclusive lock is not held across a prompt.
+    typer.confirm('Messages already sent stay in Telegram, and sync will post them again. Continue?', abort=True)
+    with database(config.storage.database) as db:
+        print(f'Forgot {db.posts.clear()} posted activities.')
+
+
 @app.command('sync')
 def sync_command(ctx: typer.Context, overrides: Overrides = None) -> None:
     """Perform one synchronization pass. Schedule this with cron."""

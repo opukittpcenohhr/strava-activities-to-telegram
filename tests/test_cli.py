@@ -15,7 +15,7 @@ class CliTests(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.config = complete_config()
         self.config.strava.client_id = 42
-        self.db = object()
+        self.db = Mock()
         self.load = self.mock('load_config', return_value=self.config)
         self.database = self.mock('database', return_value=nullcontext(self.db))
         self.authorize = self.mock('authorize')
@@ -28,8 +28,8 @@ class CliTests(unittest.TestCase):
     def mock(self, name, **kwargs):
         return self.stack.enter_context(patch('strava_to_telegram.cli.' + name, **kwargs))
 
-    def invoke(self, args):
-        return CliRunner().invoke(app, args)
+    def invoke(self, args, **kwargs):
+        return CliRunner().invoke(app, args, **kwargs)
 
     def test_help_without_config_or_credentials(self):
         self.assertEqual(self.invoke(['--help']).exit_code, 0)
@@ -52,6 +52,17 @@ class CliTests(unittest.TestCase):
         self.publish_last_activity.assert_called_once_with(
             self.db, self.strava.return_value, self.maps.return_value, self.telegram.return_value, '-100123'
         )
+        self.sync_once.assert_not_called()
+
+    def test_clear_forgets_posts_only_once_confirmed(self):
+        self.db.posts.clear.return_value = 3
+        self.assertNotEqual(self.invoke(['clear-posts-database'], input='n\n').exit_code, 0)
+        self.db.posts.clear.assert_not_called()
+
+        result = self.invoke(['clear-posts-database'], input='y\n')
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.db.posts.clear.assert_called_once_with()
+        self.assertIn('Forgot 3 posted activities.', result.output)
         self.sync_once.assert_not_called()
 
     def test_sync_performs_one_pass_with_overrides(self):

@@ -150,6 +150,15 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(self.post().message_id, 44)
         self.assertIs(self.db.posts.get(124, CHAT).status, PostStatus.SENT)
 
+    def test_clear_forgets_posts_but_keeps_tokens(self) -> None:
+        self.db.tokens.set({'access_token': 'a', 'refresh_token': 'r', 'expires_at': 1})
+        publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, ACTIVITY)
+        self.assertIsNotNone(self.post())
+        self.assertEqual(self.db.posts.clear(), 1)
+        self.assertIsNone(self.post())
+        self.assertEqual(self.db.posts.sent(CHAT), [])
+        self.assertEqual(self.db.tokens.get(), {'access_token': 'a', 'refresh_token': 'r', 'expires_at': 1})
+
     def test_tokens_posts_and_lock_survive_database_use(self) -> None:
         tokens = {'access_token': 'test-token', 'refresh_token': 'refresh', 'expires_at': 12345}
         self.db.tokens.set(tokens)

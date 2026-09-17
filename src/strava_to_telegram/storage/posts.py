@@ -53,6 +53,11 @@ class Posts:
             kind=row['kind'],
         )
 
+    def clear(self) -> int:
+        """Forget every mapping and report how many. Sent messages stay in Telegram."""
+        with self._connection:
+            return self._connection.execute('DELETE FROM posts').rowcount
+
     def mark_rejected(self, activity_id: int, chat: str) -> None:
         """Record a send that Telegram definitely rejected."""
         with self._connection:
