@@ -50,13 +50,15 @@ class Posts:
                 VALUES (?, ?, 'rejected') ON CONFLICT(activity_id, chat_id)
                 DO UPDATE SET status='rejected', updated_at=CURRENT_TIMESTAMP''', (activity_id, chat))
 
-    def mark_sent(self, activity_id: int, chat: str, message_id: int, content_hash: str) -> None:
+    def mark_sent(self, activity_id: int, chat: str, message_id: int, content_hash: str,
+                  kind: str = 'text') -> None:
         with self._connection:
-            self._connection.execute('''INSERT INTO posts(activity_id, chat_id, message_id, status, content_hash)
-                VALUES (?, ?, ?, 'sent', ?) ON CONFLICT(activity_id, chat_id)
+            self._connection.execute('''INSERT INTO posts(activity_id, chat_id, message_id, status, content_hash, kind)
+                VALUES (?, ?, ?, 'sent', ?, ?) ON CONFLICT(activity_id, chat_id)
                 DO UPDATE SET message_id=excluded.message_id, status='sent',
-                content_hash=excluded.content_hash, updated_at=CURRENT_TIMESTAMP''',
-                (activity_id, chat, message_id, content_hash))
+                content_hash=excluded.content_hash, kind=excluded.kind,
+                updated_at=CURRENT_TIMESTAMP''',
+                (activity_id, chat, message_id, content_hash, kind))
 
     def mark_removed(self, activity_id: int, chat: str) -> None:
         with self._connection:

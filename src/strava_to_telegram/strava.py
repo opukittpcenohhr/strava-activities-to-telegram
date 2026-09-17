@@ -10,6 +10,9 @@ from stravalib import Client
 from .storage.database import Database
 from .utils.omegaconf_datetime import OmegaConfDateTime
 
+PHOTO_SIZE = 2048
+MAX_PHOTOS = 10          # Telegram's album limit
+
 
 @dataclass(frozen=True)
 class Activity:
@@ -24,6 +27,8 @@ class Activity:
     start_date_local: datetime | None = None
     private: bool | None = None
     visibility: str | None = None
+    photo_count: int = 0
+    polyline: str | None = None
 
     def is_private(self) -> bool:
         return bool(self.private or self.visibility == 'only_me')
@@ -77,6 +82,32 @@ class Strava:
                 moving_time=data.get('moving_time'),
                 start_date_local=OmegaConfDateTime.parse(
                     data.get('start_date_local'), field='activity.start_date_local'),
+                photo_count=int(data.get('total_photo_count') or 0),
+                polyline=(data.get('map') or {}).get('summary_polyline') or None,
                 private=data.get('private'),
                 visibility=data.get('visibility'),
             )
+
+    def description(self, activity_id: int) -> str | None:
+        """The note written under an activity. One API read: the listing omits it."""
+        self.ready()
+        detail = self.client.get_activity(activity_id).model_dump(mode='json')
+        text = (detail.get('description') or '').strip()
+        return text or None
+
+    def photos(self, activity_id: int, limit: int = MAX_PHOTOS) -> list[str]:
+        """Photo URLs for one activity, largest size first, default photo leading.
+
+        One API read, so call it only when about to post: a full scan touches every
+        activity, and paying a read per activity would dwarf the scan itself.
+        """
+        self.ready()
+        items = []
+        for photo in self.client.get_activity_photos(activity_id, size=PHOTO_SIZE):
+            data = photo.model_dump(mode='json')
+            urls = data.get('urls') or {}
+            if urls:
+                largest = max(urls, key=lambda size: int(size))
+                items.append((not data.get('default_photo'), data.get('created_at') or '', urls[largest]))
+        items.sort()
+        return [url for _, _, url in items[:limit]]

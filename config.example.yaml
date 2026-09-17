@@ -14,10 +14,16 @@ telegram:
   channel_id: ???  # Numeric channel ID, e.g. -1001234567890
   bot_token: ???  # From BotFather
 
+map:
+  token: ???  # Mapbox public token (pk....), from account.mapbox.com
+  style: mapbox/outdoors-v12  # Strava's look; mapbox/satellite-streets-v12 also works
+
 sync:
   # Replace unavailable activities with a notice; false leaves their posts untouched.
   delete_removed_strava_activities_from_telegram: true
   include_private: false  # Include private/only-me activities returned by Strava.
+  # Only post activities that have photos. Already posted ones keep updating.
+  require_photos: true
   # Applied every run: null includes all accessible history.
   # Existing mapped activities are updated regardless of this cutoff.
   since: null  # Set a date, e.g. "2026-09-01", to limit new posts.

@@ -5,6 +5,7 @@ from typing import Annotated
 import typer
 
 from .auth import authorize
+from .maps import Map
 from .strava import Strava
 from .telegram import Telegram
 from .config import Config, load_config
@@ -32,9 +33,10 @@ def command_config(ctx: typer.Context, overrides: list[str] | None) -> Config:
     return config
 
 
-def services(db: Database, config: Config) -> tuple[Strava, Telegram, str]:
-    """Activity source, Telegram client, and destination chat for one sync pass."""
+def services(db: Database, config: Config) -> tuple[Strava, Map, Telegram, str]:
+    """Activity source, map renderer, Telegram client, and destination chat."""
     return (Strava(db, config.strava),
+            Map(config.map),
             Telegram(config.telegram.bot_token),
             config.telegram.chat)
 
@@ -52,8 +54,8 @@ def post_last_command(ctx: typer.Context, overrides: Overrides = None) -> None:
     """Always post the latest activity, ignoring sync filters and existing posts."""
     config = command_config(ctx, overrides)
     with database(config.storage.database) as db:
-        source, telegram, chat = services(db, config)
-        publish_last_activity(db, source, telegram, chat)
+        source, maps, telegram, chat = services(db, config)
+        publish_last_activity(db, source, maps, telegram, chat)
 
 
 @app.command('sync')
@@ -61,8 +63,8 @@ def sync_command(ctx: typer.Context, overrides: Overrides = None) -> None:
     """Perform one synchronization pass. Schedule this with cron."""
     config = command_config(ctx, overrides)
     with database(config.storage.database) as db:
-        source, telegram, chat = services(db, config)
-        sync_once(db, source, telegram, chat, config.sync)
+        source, maps, telegram, chat = services(db, config)
+        sync_once(db, source, maps, telegram, chat, config.sync)
 
 
 def main() -> None:

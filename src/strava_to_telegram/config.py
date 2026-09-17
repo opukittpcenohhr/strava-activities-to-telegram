@@ -15,6 +15,7 @@ from omegaconf.errors import OmegaConfBaseException
 
 from .auth import AuthConfig
 from .logs import LoggingConfig
+from .maps import MapConfig
 from .strava import StravaConfig
 from .telegram import TelegramConfig
 from .storage.database import StorageConfig
@@ -26,6 +27,7 @@ class Config:
     storage: StorageConfig
     strava: StravaConfig
     telegram: TelegramConfig
+    map: MapConfig
     sync: SyncConfig
     auth: AuthConfig
     logging: LoggingConfig

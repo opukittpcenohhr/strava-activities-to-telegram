@@ -21,6 +21,7 @@ class CliTests(unittest.TestCase):
         self.authorize = self.mock('authorize')
         self.strava = self.mock('Strava')
         self.telegram = self.mock('Telegram')
+        self.maps = self.mock('Map')
         self.sync_once = self.mock('sync_once')
         self.publish_last_activity = self.mock('publish_last_activity')
 
@@ -49,14 +50,16 @@ class CliTests(unittest.TestCase):
         result = self.invoke(['post-last'])
         self.assertEqual(result.exit_code, 0, result.output)
         self.publish_last_activity.assert_called_once_with(
-            self.db, self.strava.return_value, self.telegram.return_value, '-100123')
+            self.db, self.strava.return_value, self.maps.return_value,
+            self.telegram.return_value, '-100123')
         self.sync_once.assert_not_called()
 
     def test_sync_performs_one_pass_with_overrides(self):
         result = self.invoke(['sync', 'auth.port=9000'])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.sync_once.assert_called_once_with(self.db, self.strava.return_value, self.telegram.return_value,
-                                           '-100123', self.config.sync)
+        self.sync_once.assert_called_once_with(
+            self.db, self.strava.return_value, self.maps.return_value,
+            self.telegram.return_value, '-100123', self.config.sync)
         self.load.assert_called_once_with(Path('config.yaml'), overrides=['auth.port=9000'])
 
     def test_sync_exits_on_failure_and_closes_database(self):

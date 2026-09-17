@@ -26,8 +26,9 @@ class StravaDateTests(unittest.TestCase):
         self.assertIs(activity.private, True)
         self.assertEqual(activity.visibility, 'only_me')
         self.assertEqual(activity.type, 'Run')
-        self.assertEqual(render(activity), 'Morning run\nRun · 2026-09-16\n'
-                         '5.00 km · 0:30:00\nhttps://www.strava.com/activities/123')
+        self.assertEqual(render(activity),
+                         '🏃 Run — <b>Morning run</b>\n\n5.00 km\n30m · 6:00 /km\n\n'
+                         '<a href="https://www.strava.com/activities/123">View on Strava</a>')
 
     def test_naive_dates_are_utc_and_missing_local_date_is_allowed(self):
         item = Mock()
@@ -42,4 +43,4 @@ class StravaDateTests(unittest.TestCase):
         self.assertIsNone(activity.private)
         self.assertIsNone(activity.visibility)
         self.assertIsNone(activity.start_date_local)
-        self.assertIn('Activity · \n', render(activity))
+        self.assertIn('🏅 Activity — <b>Activity</b>', render(activity))

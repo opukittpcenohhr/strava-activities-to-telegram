@@ -5,15 +5,25 @@ Library exceptions are never allowed to escape this module. They are raised by
 URL's path. Every call below converts them into messages written here and re-raises
 with `from None`, so neither a log line nor a traceback can carry the token.
 """
+from collections.abc import Sequence
 from dataclasses import dataclass
+from io import BytesIO
 
 import requests
 import telebot
 from telebot.apihelper import ApiException, ApiTelegramException
-from telebot.types import LinkPreviewOptions
+from telebot.types import (InputFile, InputMediaAudio, InputMediaDocument,
+                           InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo,
+                           LinkPreviewOptions)
 
+
+# send_media_group takes a list of the full media union, and list is invariant.
+Media = (InputMediaAudio | InputMediaDocument | InputMediaLivePhoto
+         | InputMediaPhoto | InputMediaVideo)
 
 TIMEOUT = 30
+PARSE_MODE = 'HTML'
+CAPTION_LIMIT = 1024      # Telegram allows 4096 for text, but only 1024 under a photo
 
 
 @dataclass
@@ -61,26 +71,51 @@ def failure(error: Exception, uncertain: str) -> Rejected | Uncertain:
     return Uncertain(uncertain)
 
 
+def upload(item: str | bytes) -> str | InputFile:
+    """A URL Telegram fetches itself, or bytes it has to be handed directly."""
+    return item if isinstance(item, str) else InputFile(BytesIO(item), 'map.png')
+
+
 class Telegram:
     def __init__(self, token: str) -> None:
         self.bot = telebot.TeleBot(token, threaded=False)
 
-    def send(self, chat: str, text: str) -> int:
+    def send(self, chat: str, text: str, photos: Sequence[str | bytes] = ()) -> tuple[int, str]:
+        """Post an activity, returning the message to edit later and its kind.
+
+        Photos are URLs Telegram fetches, or raw bytes it uploads. With any of them
+        the text becomes a caption, which Telegram edits through a different method
+        -- hence the kind travelling back to the caller.
+        """
+        unreadable = 'Telegram response unavailable; delivery may have succeeded'
         try:
+            if len(photos) > 1:
+                media: list[Media] = [InputMediaPhoto(upload(item)) for item in photos]
+                media[0].caption = text[:CAPTION_LIMIT]
+                media[0].parse_mode = PARSE_MODE
+                # An album is several messages; the caption lives on the first.
+                group = self.bot.send_media_group(chat, media, timeout=TIMEOUT)
+                return group[0].message_id, 'caption'
+            if photos:
+                message = self.bot.send_photo(chat, upload(photos[0]), caption=text[:CAPTION_LIMIT],
+                                              parse_mode=PARSE_MODE, timeout=TIMEOUT)
+                return message.message_id, 'caption'
             message = self.bot.send_message(
-                chat, text, timeout=TIMEOUT,
+                chat, text, timeout=TIMEOUT, parse_mode=PARSE_MODE,
                 link_preview_options=LinkPreviewOptions(is_disabled=True))
         except (ApiException, requests.RequestException) as error:
-            raise failure(error, 'Telegram response unavailable; delivery may have succeeded') from None
-        return message.message_id
+            raise failure(error, unreadable) from None
+        return message.message_id, 'text'
 
     def edit(self, chat: str, message: int, text: str, kind: str) -> None:
         unreadable = 'Telegram edit response unavailable; safe to retry edit'
         try:
             if kind == 'caption':
-                self.bot.edit_message_caption(text, chat_id=chat, message_id=message, timeout=TIMEOUT)
+                self.bot.edit_message_caption(text[:CAPTION_LIMIT], chat_id=chat, message_id=message,
+                                              parse_mode=PARSE_MODE, timeout=TIMEOUT)
             else:
                 self.bot.edit_message_text(text, chat_id=chat, message_id=message, timeout=TIMEOUT,
+                                           parse_mode=PARSE_MODE,
                                            link_preview_options=LinkPreviewOptions(is_disabled=True))
         except ApiTelegramException as error:
             # Telegram reports an identical edit as an error; treat it as successful recovery.

@@ -57,7 +57,27 @@ reverse one silently.
     without annotations fails the check.
 13. **Use f-strings for logging.** Interpolate values directly into log messages
     rather than using `%s` placeholders and separate arguments.
-14. **Tests contact no API.** Keep them offline, and prefer a small number of
+14. **What the listing omits is fetched only when a post is sent or edited, and
+    never hashed.** Photo URLs and the description each cost a read, and a full
+    scan touches every activity every pass, so paying per activity would dwarf
+    the scan and break the daily rate limit. The content hash therefore covers
+    only what the listing carries: `digest(render(activity))`, with no
+    description. Hashing a fetched value would force a request per activity per
+    pass just to decide there was nothing to do.
+15. **The map comes from Mapbox's Static Images API, drawn on their side.** The
+    encoded polyline goes into the URL as a path overlay, so one GET returns the
+    finished image and Mapbox renders its own attribution into it. A locally drawn
+    trace was tried first and deliberately replaced: it needed no key, but a bare
+    line without a basemap is not what this is for.
+16. **`maps.py` must not leak the Mapbox token**, for the same reason as
+    `telegram.py`: the token is in the URL's query string and `requests` puts the
+    URL in its messages. Convert them and re-raise with `from None`.
+    `tests/test_maps.py` asserts this.
+17. **Media is never edited after a post is sent.** Telegram allows replacing an
+    item of an album but not appending one, and its length is fixed at send time,
+    so any update would be partial. Only the caption is rewritten; do not add a
+    media-editing path to make photos "catch up".
+18. **Tests contact no API.** Keep them offline, and prefer a small number of
     behavior-level tests over exhaustive implementation checks.
 
 ## Before finishing

@@ -12,6 +12,7 @@ from strava_to_telegram.auth import AuthConfig
 from strava_to_telegram.strava import StravaConfig
 from strava_to_telegram.telegram import TelegramConfig
 from strava_to_telegram.logs import LoggingConfig
+from strava_to_telegram.maps import MapConfig
 from strava_to_telegram.storage.database import StorageConfig
 from strava_to_telegram.sync import SyncConfig
 from strava_to_telegram.utils.omegaconf_datetime import OmegaConfDateTime
@@ -24,7 +25,8 @@ def complete_config():
         storage=StorageConfig(Path('data/activities.db')),
         strava=StravaConfig(42, 'strava-client-secret'),
         telegram=TelegramConfig(-100123, '123456:telegram-bot-token'),
-        sync=SyncConfig(None, False, delete_removed_strava_activities_from_telegram=True),
+        map=MapConfig('pk.mapbox-token', 'mapbox/outdoors-v12'),
+        sync=SyncConfig(None, False, True, delete_removed_strava_activities_from_telegram=True),
         auth=AuthConfig('127.0.0.1', 8000),
         logging=LoggingConfig('INFO'),
     )
@@ -44,8 +46,9 @@ class ConfigValidationTests(unittest.TestCase):
                       lambda: StravaConfig(-1, 'secret'),
                       lambda: StravaConfig(42, ''),
                       lambda: LoggingConfig('VERBOSE'),
-                      lambda: SyncConfig(None, 'false', delete_removed_strava_activities_from_telegram=True),
-                      lambda: SyncConfig('yesterday', False, delete_removed_strava_activities_from_telegram=True)]:
+                      lambda: SyncConfig(None, 'false', True, delete_removed_strava_activities_from_telegram=True),
+                      lambda: SyncConfig('yesterday', False, True, delete_removed_strava_activities_from_telegram=True),
+                      lambda: SyncConfig(None, False, 'yes', delete_removed_strava_activities_from_telegram=True)]:
             with self.subTest(build=build), self.assertRaises(ValueError):
                 build()
 
@@ -66,7 +69,7 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             from_mapping(data, Path('/tmp'), overrides=[f'sync.{key}=sometimes'])
         with self.assertRaisesRegex(ValueError, key):
-            SyncConfig(None, False, 'false')
+            SyncConfig(None, False, True, 'false')
 
     def test_since_parses_after_overrides_and_interpolation(self):
         config = from_mapping(complete_mapping(), Path('/tmp'), overrides=[
@@ -148,11 +151,11 @@ class ConfigTests(unittest.TestCase):
                 from_mapping(complete_mapping(), Path('/tmp'), overrides=[override])
 
     def test_yaml_example_and_duplicate_keys(self):
-        # The example ships `???` for the four values a user must supply.
+        # The example ships `???` for the five values a user must supply.
         with self.assertRaisesRegex(ValueError, 'Missing required settings'):
             load_config('config.example.yaml')
         filled = ['strava.client_id=42', 'strava.client_secret=s',
-                  'telegram.channel_id=-100123', 'telegram.bot_token=t']
+                  'telegram.channel_id=-100123', 'telegram.bot_token=t', 'map.token=pk.t']
         self.assertEqual(load_config('config.example.yaml', overrides=filled).auth.port, 8000)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'config.yaml'
