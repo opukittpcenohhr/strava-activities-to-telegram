@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime, timezone
+import re
 import tempfile
 import unittest
 
@@ -25,7 +26,7 @@ def complete_config():
         strava=StravaConfig(42, 'strava-client-secret'),
         telegram=TelegramConfig(-100123, '123456:telegram-bot-token'),
         map=MapConfig('pk.mapbox-token', 'mapbox/outdoors-v12'),
-        sync=SyncConfig(None, False, True, delete_removed_strava_activities_from_telegram=True),
+        sync=SyncConfig(None, False, True, 10, delete_removed_strava_activities_from_telegram=True),
         auth=AuthConfig('127.0.0.1', 8000),
         logging=LoggingConfig('INFO'),
     )
@@ -38,6 +39,7 @@ def complete_mapping():
 class ConfigValidationTests(unittest.TestCase):
     def test_sections_validate_themselves_on_construction(self):
         """Each dataclass enforces its own invariants, so a bad value cannot exist."""
+        removal = 'delete_removed_strava_activities_from_telegram'
         for build in [
             lambda: AuthConfig('127.0.0.1', 70000),
             lambda: AuthConfig('   ', 8000),
@@ -46,9 +48,11 @@ class ConfigValidationTests(unittest.TestCase):
             lambda: StravaConfig(-1, 'secret'),
             lambda: StravaConfig(42, ''),
             lambda: LoggingConfig('VERBOSE'),
-            lambda: SyncConfig(None, 'false', True, delete_removed_strava_activities_from_telegram=True),
-            lambda: SyncConfig('yesterday', False, True, delete_removed_strava_activities_from_telegram=True),
-            lambda: SyncConfig(None, False, 'yes', delete_removed_strava_activities_from_telegram=True),
+            lambda: SyncConfig(None, 'false', True, 10, **{removal: True}),
+            lambda: SyncConfig('yesterday', False, True, 10, **{removal: True}),
+            lambda: SyncConfig(None, False, 'yes', 10, **{removal: True}),
+            lambda: SyncConfig(None, False, True, 0, **{removal: True}),
+            lambda: SyncConfig(None, False, True, True, **{removal: True}),
         ]:
             with self.subTest(build=build), self.assertRaises(ValueError):
                 build()
@@ -70,7 +74,7 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             from_mapping(data, Path('/tmp'), overrides=[f'sync.{key}=sometimes'])
         with self.assertRaisesRegex(ValueError, key):
-            SyncConfig(None, False, True, 'false')
+            SyncConfig(None, False, True, 10, 'false')
 
     def test_since_parses_after_overrides_and_interpolation(self):
         config = from_mapping(complete_mapping(), Path('/tmp'), overrides=['sync.since=2026-09-16T10:00:00+02:00'])
@@ -176,7 +180,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(load_config('config.example.yaml', overrides=filled).auth.port, 8000)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'config.yaml'
-            path.write_text(Path('config.example.yaml').read_text().replace('since: null', 'since: 2026-09-01'))
+            example = Path('config.example.yaml').read_text()
+            path.write_text(re.sub(r'(?m)^  since: .*$', '  since: 2026-09-01', example))
             self.assertEqual(load_config(path, overrides=filled).sync.since, datetime(2026, 9, 1, tzinfo=timezone.utc))
             # Malformed YAML is left to PyYAML, whose message names line and column.
             for text in [

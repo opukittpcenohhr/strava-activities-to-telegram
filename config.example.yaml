@@ -24,9 +24,10 @@ sync:
   include_private: false  # Include private/only-me activities returned by Strava.
   # Only post activities that have photos. Already posted ones keep updating.
   require_photos: true
-  # Applied every run: null includes all accessible history.
-  # Existing mapped activities are updated regardless of this cutoff.
-  since: null  # Set a date, e.g. "2026-09-01", to limit new posts.
+  max_updates: 2  # Telegram writes per pass, oldest first. Telegram floods above ~20 messages a minute.
+  # Applied every run; null includes all accessible history. Activities before
+  # the cutoff are ignored entirely: not posted, and no longer updated.
+  since: "2026-08-01"
 
 auth:
   host: 127.0.0.1

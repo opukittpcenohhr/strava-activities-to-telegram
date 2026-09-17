@@ -32,9 +32,10 @@ def sync_config(
     since: datetime | None = None,
     include_private: bool = False,
     require_photos: bool = False,
+    max_updates: int = 100,
     remove_missing: bool = True,
 ) -> SyncConfig:
-    return SyncConfig(since, include_private, require_photos, remove_missing)
+    return SyncConfig(since, include_private, require_photos, max_updates, remove_missing)
 
 
 class BridgeTests(unittest.TestCase):
@@ -91,17 +92,19 @@ class BridgeTests(unittest.TestCase):
             publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, replace(ACTIVITY, distance=6000))
         self.assertEqual(self.post().content_hash, old_hash)
 
-    def test_sync_applies_cutoff_only_to_new_posts_and_filters_private(self) -> None:
+    def test_sync_ignores_activities_before_the_cutoff_and_filters_private(self) -> None:
         source = Mock()
         source.description.return_value = None
         cutoff = datetime(2026, 9, 17, tzinfo=timezone.utc)
         source.activities.return_value = [ACTIVITY, replace(ACTIVITY, id=124, private=True)]
         sync_once(self.db, source, self.maps, self.telegram, CHAT, sync_config(since=cutoff))
         self.telegram.send.assert_not_called()
+        # A post made before the cutoff moved is left alone, not edited.
         publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, replace(ACTIVITY, name='Old title'))
         source.activities.return_value = [replace(ACTIVITY, name='Updated'), replace(ACTIVITY, id=124, private=True)]
         sync_once(self.db, source, self.maps, self.telegram, CHAT, sync_config(since=cutoff))
-        self.telegram.edit.assert_called_once()
+        self.telegram.edit.assert_not_called()
+        self.assertEqual(self.db.posts.get(ACTIVITY.id, CHAT).status, PostStatus.SENT)
         self.assertIsNone(self.db.posts.get(124, CHAT))
 
     def test_missing_posts_are_redacted_only_when_enabled_and_can_reappear(self) -> None:
@@ -314,3 +317,56 @@ class RequirePhotosTests(unittest.TestCase):
         self.sync([replace(ACTIVITY, id=1, photo_count=0, name='Renamed')])
         self.telegram.edit.assert_called_once()
         self.assertEqual(self.db.posts.get(1, CHAT).status, PostStatus.SENT)
+
+
+class MaxUpdatesTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.context = database(Path(self.temp.name) / 'test.db')
+        self.db = self.context.__enter__()
+        self.telegram = Mock()
+        self.message = 100
+        self.telegram.send.side_effect = self.next_message
+        self.maps = Mock()
+        self.source = Mock()
+        self.source.photos.return_value = []
+        self.source.description.return_value = None
+
+    def next_message(self, *args: object, **kwargs: object) -> tuple[int, str]:
+        self.message += 1
+        return self.message, 'text'
+
+    def tearDown(self) -> None:
+        self.context.__exit__(None, None, None)
+        self.temp.cleanup()
+
+    def batch(self, count: int) -> list[Activity]:
+        """Newest first, the order Strava returns."""
+        return [
+            replace(ACTIVITY, id=index, start_date=datetime(2026, 9, index, tzinfo=timezone.utc))
+            for index in range(count, 0, -1)
+        ]
+
+    def sync(self, activities: list[Activity], **options: int) -> None:
+        self.source.activities.return_value = activities
+        sync_once(self.db, self.source, self.maps, self.telegram, CHAT, sync_config(**options))
+
+    def test_a_pass_posts_at_most_max_updates_oldest_first(self) -> None:
+        self.sync(self.batch(10), max_updates=3)
+        self.assertEqual(sorted(r.activity_id for r in self.db.posts.sent(CHAT)), [1, 2, 3])
+        self.sync(self.batch(10), max_updates=3)
+        self.assertEqual(sorted(r.activity_id for r in self.db.posts.sent(CHAT)), [1, 2, 3, 4, 5, 6])
+
+    def test_held_back_activities_are_never_mistaken_for_missing(self) -> None:
+        self.sync(self.batch(6), max_updates=6)
+        self.telegram.reset_mock()
+        self.sync(self.batch(6), max_updates=1)
+        self.telegram.edit.assert_not_called()
+        self.assertTrue(all(r.status is PostStatus.SENT for r in self.db.posts.sent(CHAT)))
+
+    def test_redaction_shares_the_budget(self) -> None:
+        self.sync(self.batch(4), max_updates=4)
+        self.telegram.reset_mock()
+        self.sync([], max_updates=1)
+        self.assertEqual(self.telegram.edit.call_count, 1)
+        self.assertEqual(len(self.db.posts.sent(CHAT)), 3)

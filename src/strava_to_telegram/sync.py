@@ -14,6 +14,7 @@ class SyncConfig:
     since: OmegaConfDateTime | None
     include_private: bool
     require_photos: bool
+    max_updates: int
     delete_removed_strava_activities_from_telegram: bool
 
     def __post_init__(self) -> None:
@@ -22,6 +23,11 @@ class SyncConfig:
             raise ValueError('sync.include_private must be a boolean')
         if not isinstance(self.require_photos, bool):
             raise ValueError('sync.require_photos must be a boolean')
+        # bool is an int subclass, so `max_updates: true` would otherwise pass as 1.
+        if isinstance(self.max_updates, bool) or not isinstance(self.max_updates, int):
+            raise ValueError('sync.max_updates must be an integer')
+        if self.max_updates < 1:
+            raise ValueError('sync.max_updates must be at least 1')
         if not isinstance(self.delete_removed_strava_activities_from_telegram, bool):
             raise ValueError('sync.delete_removed_strava_activities_from_telegram must be a boolean')
 
@@ -52,7 +58,8 @@ def publish_activity(
     activity: Activity,
     *,
     force_new: bool = False,
-) -> None:
+) -> bool:
+    """Post or edit one activity. True when Telegram was written to."""
     aid = activity.id
     row = db.posts.get(aid, chat)
     # The hash covers what the listing carries. The description is fetched, not
@@ -62,7 +69,7 @@ def publish_activity(
     if not force_new and row and row.message_id:
         if row.content_hash == hashed:
             log.debug(f'Skipping unchanged activity {aid}')
-            return
+            return False
         text = render(activity, source.description(aid))
         log.debug(f'Editing activity {aid} in message {row.message_id}')
         # Photos are fixed at first post: Telegram cannot add media to a message
@@ -86,6 +93,7 @@ def publish_activity(
                 raise
     db.posts.mark_sent(aid, chat, message_id, hashed, kind)
     log.info(f'Synced activity {aid} to message {message_id}')
+    return True
 
 
 def publish_last_activity(db: Database, source: Strava, maps: Map, telegram: Telegram, chat: str) -> None:
@@ -102,22 +110,30 @@ def sync_once(db: Database, source: Strava, maps: Map, telegram: Telegram, chat:
     activities = list(source.activities())
     visible_strava_activities_id = set()
     failures = 0
+    budget = config.max_updates
     for activity in reversed(activities):
         if not config.include_private and activity.is_private():
             continue
         visible_strava_activities_id.add(activity.id)
         row = db.posts.get(activity.id, chat)
-        if not row and config.since is not None and activity.start_date < config.since:
+        if config.since is not None and activity.start_date < config.since:
             continue
         # Only gates the first post. An activity already in the channel keeps its
         # post -- and its updates -- even if its photos are deleted afterwards.
         if not row and config.require_photos and not activity.photo_count:
             log.debug(f'Skipping activity {activity.id}: no photos')
             continue
+        if budget <= 0:
+            # Skip the write, never the scan: an activity missing from the visible
+            # set below is redacted as though Strava had lost it.
+            log.debug(f'Holding back activity {activity.id}: sync.max_updates reached')
+            continue
         try:
-            publish_activity(db, source, maps, telegram, chat, activity)
+            if publish_activity(db, source, maps, telegram, chat, activity):
+                budget -= 1
         except (Rejected, Uncertain):
             failures += 1
+            budget -= 1
             log.error(f"Could not sync activity {activity.id}; will retry on the next sync")
     if config.delete_removed_strava_activities_from_telegram:
         # Old Telegram posts cannot always be deleted. Redact content by editing instead.
@@ -125,7 +141,11 @@ def sync_once(db: Database, source: Strava, maps: Map, telegram: Telegram, chat:
         for row in rows:
             if row.activity_id in visible_strava_activities_id:
                 continue
+            if budget <= 0:
+                log.debug(f'Holding back redaction of {row.activity_id}: sync.max_updates reached')
+                continue
             assert row.message_id is not None
+            budget -= 1
             try:
                 telegram.edit(chat, row.message_id, 'This activity is no longer available.', row.kind)
                 db.posts.mark_removed(row.activity_id, chat)

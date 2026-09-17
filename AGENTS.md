@@ -77,7 +77,11 @@ reverse one silently.
     item of an album but not appending one, and its length is fixed at send time,
     so any update would be partial. Only the caption is rewritten; do not add a
     media-editing path to make photos "catch up".
-18. **Tests contact no API.** Keep them offline, and prefer a small number of
+18. **A bounded pass must still scan everything.** `sync.max_updates` stops the
+    writes, never the loop: redaction compares posted rows against the activities
+    seen this pass, so an early exit would redact the whole channel. Keep that
+    `continue` a `continue`.
+19. **Tests contact no API.** Keep them offline, and prefer a small number of
     behavior-level tests over exhaustive implementation checks.
 
 ## Before finishing

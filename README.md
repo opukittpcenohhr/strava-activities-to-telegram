@@ -32,6 +32,7 @@ OmegaConf and SQLite.
 - It holds your client secret and bot token; keep it and `data/` private and out of chats and issues.
 - Every field is required; nullable ones such as `sync.since` need an explicit `null`.
 - `sync.require_photos` (`true` in the example) posts only activities that have photos. It gates the first post only — an activity already in the channel keeps updating even if its photos are deleted.
+- `sync.max_updates` caps Telegram writes per pass, oldest activity first, so a backlog drains over several passes instead of flooding the channel.
 - Relative paths resolve beside the file.
 - Any field can be overridden per run: `strava-to-telegram sync sync.since=2026-09-01 logging.level=DEBUG`.
 
@@ -81,7 +82,7 @@ changes on Strava.
 
 **Strava.** About 100 reads per 15 minutes, 1,000 per day.
 
-- A pass costs `ceil(activities / 200)` reads. `*/15` fits ~2,000 activities; use `*/30` above that.
+- A pass costs `ceil(activities / 200)` reads for the scan, plus up to `2 × sync.max_updates` for what it posts. `*/15` fits ~2,000 activities; use `*/30` above that.
 - Each new post or edit costs 2 more: the description and the photo URLs.
 - Deleted or newly private activities get their text replaced with a notice, and only after a full successful scan.
 
