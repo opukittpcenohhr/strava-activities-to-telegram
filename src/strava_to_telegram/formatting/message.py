@@ -38,7 +38,10 @@ def render(activity: Activity, description: str | None = None) -> str:
         blocks.append('\n'.join(stats))
     if description:
         blocks.append(f'<i>{escape(description.strip()[:DESCRIPTION_LIMIT])}</i>')
-    blocks.append(f'<a href="{STRAVA_ACTIVITY.format(id=activity.id)}">View on Strava</a>')
+    # The athlete's own day rather than UTC's, which can differ by one.
+    when = activity.start_date_local or activity.start_date
+    link = f'<a href="{STRAVA_ACTIVITY.format(id=activity.id)}">View on Strava</a>'
+    blocks.append(f'{when.day} {when:%B} {when.year}\n{link}')
     return '\n\n'.join(blocks)
 
 

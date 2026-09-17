@@ -36,7 +36,7 @@ class StravaDateTests(unittest.TestCase):
         self.assertEqual(activity.type, 'Run')
         self.assertEqual(
             render(activity),
-            '🏃 Run — <b>Morning run</b>\n\n5.00 km\n30m · 6:00 /km\n\n'
+            '🏃 Run — <b>Morning run</b>\n\n5.00 km\n30m · 6:00 /km\n\n16 September 2026\n'
             '<a href="https://www.strava.com/activities/123">View on Strava</a>',
         )
 
