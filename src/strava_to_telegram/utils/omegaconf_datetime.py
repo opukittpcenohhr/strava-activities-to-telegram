@@ -3,6 +3,7 @@
 OmegaConf passes resolved values through unchanged for custom scalar types.
 The owning config section calls OmegaConfDateTime.parse in __post_init__ to convert them.
 """
+
 from datetime import datetime, timezone
 from typing import Self, overload
 

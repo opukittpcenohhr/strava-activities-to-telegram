@@ -22,9 +22,14 @@ packages = ["src/strava_to_telegram"]
 
 [dependency-groups]
 dev = [
+    "black>=26.5.1",
     "mypy>=1.11",
     "pytest>=9.1.1",
 ]
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
 
 [tool.mypy]
 files = ["src"]

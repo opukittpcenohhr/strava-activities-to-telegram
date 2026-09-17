@@ -14,16 +14,26 @@ from strava_to_telegram.maps import MapUnavailable
 from strava_to_telegram.sync import SyncConfig, publish_activity, publish_last_activity, sync_once
 from strava_to_telegram.telegram import Rejected, Uncertain
 
-
-ACTIVITY = Activity(id=123, name='Morning run', sport_type='Run', distance=5000,
-                    moving_time=1800, start_date=datetime(2026, 9, 16, 8, tzinfo=timezone.utc),
-                    start_date_local=datetime(2026, 9, 16, 10, tzinfo=timezone.utc))
+ACTIVITY = Activity(
+    id=123,
+    name='Morning run',
+    sport_type='Run',
+    distance=5000,
+    moving_time=1800,
+    start_date=datetime(2026, 9, 16, 8, tzinfo=timezone.utc),
+    start_date_local=datetime(2026, 9, 16, 10, tzinfo=timezone.utc),
+)
 CHAT = '-1001234567890'
 SAMPLE_POLYLINE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@'
 
 
-def sync_config(*, since: datetime | None = None, include_private: bool = False,
-                require_photos: bool = False, remove_missing: bool = True) -> SyncConfig:
+def sync_config(
+    *,
+    since: datetime | None = None,
+    include_private: bool = False,
+    require_photos: bool = False,
+    remove_missing: bool = True,
+) -> SyncConfig:
     return SyncConfig(since, include_private, require_photos, remove_missing)
 
 
@@ -57,8 +67,9 @@ class BridgeTests(unittest.TestCase):
 
     def test_failed_sends_are_retryable(self) -> None:
         for activity_id, error, stored_status in (
-                (123, Rejected('forbidden'), PostStatus.REJECTED),
-                (124, Uncertain('timeout'), None)):
+            (123, Rejected('forbidden'), PostStatus.REJECTED),
+            (124, Uncertain('timeout'), None),
+        ):
             with self.subTest(error=type(error).__name__):
                 activity = replace(ACTIVITY, id=activity_id)
                 self.telegram.reset_mock()
@@ -88,8 +99,7 @@ class BridgeTests(unittest.TestCase):
         sync_once(self.db, source, self.maps, self.telegram, CHAT, sync_config(since=cutoff))
         self.telegram.send.assert_not_called()
         publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, replace(ACTIVITY, name='Old title'))
-        source.activities.return_value = [replace(ACTIVITY, name='Updated'),
-                                          replace(ACTIVITY, id=124, private=True)]
+        source.activities.return_value = [replace(ACTIVITY, name='Updated'), replace(ACTIVITY, id=124, private=True)]
         sync_once(self.db, source, self.maps, self.telegram, CHAT, sync_config(since=cutoff))
         self.telegram.edit.assert_called_once()
         self.assertIsNone(self.db.posts.get(124, CHAT))
@@ -151,12 +161,13 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(self.post().message_id, 42)
 
     def test_oauth_callback_requires_state_scope_code_and_path(self) -> None:
-        self.assertEqual(validate_callback(
-            '/callback?state=secret&scope=read,activity:read&code=abc', 'secret'), 'abc')
-        for path in ['/callback?state=wrong&scope=activity:read&code=abc',
-                     '/callback?state=secret&scope=read&code=abc',
-                     '/callback?state=secret&scope=activity:read',
-                     '/other?state=secret&scope=activity:read&code=abc']:
+        self.assertEqual(validate_callback('/callback?state=secret&scope=read,activity:read&code=abc', 'secret'), 'abc')
+        for path in [
+            '/callback?state=wrong&scope=activity:read&code=abc',
+            '/callback?state=secret&scope=read&code=abc',
+            '/callback?state=secret&scope=activity:read',
+            '/other?state=secret&scope=activity:read&code=abc',
+        ]:
             with self.subTest(path=path), self.assertRaises(ValueError):
                 validate_callback(path, 'secret')
 
@@ -190,8 +201,7 @@ class PhotoTests(unittest.TestCase):
         self.assertEqual(self.telegram.send.call_args.args[2], self.source.photos.return_value)
         self.assertEqual(self.db.posts.get(ACTIVITY.id, CHAT).kind, 'caption')
 
-        publish_activity(self.db, self.source, self.maps, self.telegram, CHAT,
-                         replace(self.activity, name='Renamed'))
+        publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, replace(self.activity, name='Renamed'))
         self.telegram.edit.assert_called_once()
         self.assertEqual(self.telegram.edit.call_args.args[3], 'caption')
         # An edit must not re-fetch photos: the scan already pays for the listing.
@@ -214,8 +224,7 @@ class PhotoTests(unittest.TestCase):
         with_route = replace(self.activity, polyline=SAMPLE_POLYLINE)
         publish_activity(self.db, self.source, self.maps, self.telegram, CHAT, with_route)
         self.maps.image.assert_called_once_with(SAMPLE_POLYLINE)
-        self.assertEqual(self.telegram.send.call_args.args[2],
-                         [b'map-png'] + self.source.photos.return_value)
+        self.assertEqual(self.telegram.send.call_args.args[2], [b'map-png'] + self.source.photos.return_value)
 
     def test_post_survives_an_unavailable_map(self) -> None:
         self.maps.image.side_effect = MapUnavailable('Mapbox returned no image (HTTP 401)')
@@ -289,8 +298,7 @@ class RequirePhotosTests(unittest.TestCase):
 
     def sync(self, activities: list[Activity], **options: bool) -> None:
         self.source.activities.return_value = activities
-        sync_once(self.db, self.source, self.maps, self.telegram, CHAT,
-                  sync_config(require_photos=True, **options))
+        sync_once(self.db, self.source, self.maps, self.telegram, CHAT, sync_config(require_photos=True, **options))
 
     def test_only_activities_with_photos_are_posted(self) -> None:
         with_photos = replace(ACTIVITY, id=1, photo_count=2)

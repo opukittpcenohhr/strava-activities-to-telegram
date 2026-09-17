@@ -43,8 +43,16 @@ def attachments(source: Strava, maps: Map, activity: Activity) -> list[str | byt
     return items
 
 
-def publish_activity(db: Database, source: Strava, maps: Map, telegram: Telegram, chat: str,
-                     activity: Activity, *, force_new: bool = False) -> None:
+def publish_activity(
+    db: Database,
+    source: Strava,
+    maps: Map,
+    telegram: Telegram,
+    chat: str,
+    activity: Activity,
+    *,
+    force_new: bool = False,
+) -> None:
     aid = activity.id
     row = db.posts.get(aid, chat)
     # The hash covers what the listing carries. The description is fetched, not
@@ -80,8 +88,7 @@ def publish_activity(db: Database, source: Strava, maps: Map, telegram: Telegram
     log.info(f'Synced activity {aid} to message {message_id}')
 
 
-def publish_last_activity(db: Database, source: Strava, maps: Map, telegram: Telegram,
-                          chat: str) -> None:
+def publish_last_activity(db: Database, source: Strava, maps: Map, telegram: Telegram, chat: str) -> None:
     """Always send the latest accessible activity as a new post, without sync filters."""
     activity = next(iter(source.activities(limit=1)), None)
     if activity is None:
@@ -90,8 +97,7 @@ def publish_last_activity(db: Database, source: Strava, maps: Map, telegram: Tel
     publish_activity(db, source, maps, telegram, chat, activity, force_new=True)
 
 
-def sync_once(db: Database, source: Strava, maps: Map, telegram: Telegram, chat: str,
-              config: SyncConfig) -> None:
+def sync_once(db: Database, source: Strava, maps: Map, telegram: Telegram, chat: str, config: SyncConfig) -> None:
     """Synchronize one full scan, including updates and missing-activity redaction."""
     activities = list(source.activities())
     visible_strava_activities_id = set()

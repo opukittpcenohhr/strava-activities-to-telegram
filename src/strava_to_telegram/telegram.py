@@ -5,6 +5,7 @@ Library exceptions are never allowed to escape this module. They are raised by
 URL's path. Every call below converts them into messages written here and re-raises
 with `from None`, so neither a log line nor a traceback can carry the token.
 """
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
@@ -12,18 +13,22 @@ from io import BytesIO
 import requests
 import telebot
 from telebot.apihelper import ApiException, ApiTelegramException
-from telebot.types import (InputFile, InputMediaAudio, InputMediaDocument,
-                           InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo,
-                           LinkPreviewOptions)
-
+from telebot.types import (
+    InputFile,
+    InputMediaAudio,
+    InputMediaDocument,
+    InputMediaLivePhoto,
+    InputMediaPhoto,
+    InputMediaVideo,
+    LinkPreviewOptions,
+)
 
 # send_media_group takes a list of the full media union, and list is invariant.
-Media = (InputMediaAudio | InputMediaDocument | InputMediaLivePhoto
-         | InputMediaPhoto | InputMediaVideo)
+Media = InputMediaAudio | InputMediaDocument | InputMediaLivePhoto | InputMediaPhoto | InputMediaVideo
 
 TIMEOUT = 30
 PARSE_MODE = 'HTML'
-CAPTION_LIMIT = 1024      # Telegram allows 4096 for text, but only 1024 under a photo
+CAPTION_LIMIT = 1024  # Telegram allows 4096 for text, but only 1024 under a photo
 
 
 @dataclass
@@ -97,12 +102,17 @@ class Telegram:
                 group = self.bot.send_media_group(chat, media, timeout=TIMEOUT)
                 return group[0].message_id, 'caption'
             if photos:
-                message = self.bot.send_photo(chat, upload(photos[0]), caption=text[:CAPTION_LIMIT],
-                                              parse_mode=PARSE_MODE, timeout=TIMEOUT)
+                message = self.bot.send_photo(
+                    chat, upload(photos[0]), caption=text[:CAPTION_LIMIT], parse_mode=PARSE_MODE, timeout=TIMEOUT
+                )
                 return message.message_id, 'caption'
             message = self.bot.send_message(
-                chat, text, timeout=TIMEOUT, parse_mode=PARSE_MODE,
-                link_preview_options=LinkPreviewOptions(is_disabled=True))
+                chat,
+                text,
+                timeout=TIMEOUT,
+                parse_mode=PARSE_MODE,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
+            )
         except (ApiException, requests.RequestException) as error:
             raise failure(error, unreadable) from None
         return message.message_id, 'text'
@@ -111,12 +121,18 @@ class Telegram:
         unreadable = 'Telegram edit response unavailable; safe to retry edit'
         try:
             if kind == 'caption':
-                self.bot.edit_message_caption(text[:CAPTION_LIMIT], chat_id=chat, message_id=message,
-                                              parse_mode=PARSE_MODE, timeout=TIMEOUT)
+                self.bot.edit_message_caption(
+                    text[:CAPTION_LIMIT], chat_id=chat, message_id=message, parse_mode=PARSE_MODE, timeout=TIMEOUT
+                )
             else:
-                self.bot.edit_message_text(text, chat_id=chat, message_id=message, timeout=TIMEOUT,
-                                           parse_mode=PARSE_MODE,
-                                           link_preview_options=LinkPreviewOptions(is_disabled=True))
+                self.bot.edit_message_text(
+                    text,
+                    chat_id=chat,
+                    message_id=message,
+                    timeout=TIMEOUT,
+                    parse_mode=PARSE_MODE,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+                )
         except ApiTelegramException as error:
             # Telegram reports an identical edit as an error; treat it as successful recovery.
             if error.error_code == 400 and 'message is not modified' in (error.description or ''):

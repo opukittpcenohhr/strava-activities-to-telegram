@@ -21,5 +21,4 @@ class Tokens:
 
     def set(self, tokens: TokenData) -> None:
         with self._connection:
-            self._connection.execute('INSERT OR REPLACE INTO tokens(id, value) VALUES (1, ?)',
-                                     (json.dumps(tokens),))
+            self._connection.execute('INSERT OR REPLACE INTO tokens(id, value) VALUES (1, ?)', (json.dumps(tokens),))

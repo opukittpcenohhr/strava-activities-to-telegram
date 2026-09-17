@@ -1,4 +1,5 @@
 """One-time Strava OAuth callback, reachable through an SSH tunnel on a VM."""
+
 from dataclasses import dataclass
 import secrets
 import time
@@ -70,18 +71,21 @@ def authorize(db: Database, config: AuthConfig, strava: StravaConfig) -> None:
     with HTTPServer((host, port), Callback) as server:
         server.timeout = 1
         print('Open this link in your browser (expires here in five minutes):', flush=True)
-        print(client.authorization_url(
-            client_id=strava.client_id,
-            redirect_uri=f'http://localhost:{port}/callback',
-            scope=['activity:read'], state=state), flush=True)
+        print(
+            client.authorization_url(
+                client_id=strava.client_id,
+                redirect_uri=f'http://localhost:{port}/callback',
+                scope=['activity:read'],
+                state=state,
+            ),
+            flush=True,
+        )
         deadline = time.monotonic() + 300
         while code is None and time.monotonic() < deadline:
             server.handle_request()
     if code is None:
         raise RuntimeError('Authorization timed out; run auth again')
-    tokens = client.exchange_code_for_token(
-        client_id=strava.client_id,
-        client_secret=strava.client_secret, code=code)
+    tokens = client.exchange_code_for_token(client_id=strava.client_id, client_secret=strava.client_secret, code=code)
     # Without return_athlete=True, stravalib returns just the token dictionary.
     db.tokens.set(cast(TokenData, tokens))
     print('Strava authorization saved.')

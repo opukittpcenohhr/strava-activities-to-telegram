@@ -9,6 +9,7 @@ Library exceptions must not escape this module, for the reason they must not
 escape `telegram.py`: the access token sits in the URL's query string, and
 `requests` puts the URL into the messages it raises.
 """
+
 from dataclasses import dataclass
 from urllib.parse import quote
 
@@ -16,9 +17,9 @@ import requests
 
 API = 'https://api.mapbox.com/styles/v1'
 TIMEOUT = 30
-SIZE = '900x600@2x'      # Mapbox caps a side at 1280 before the @2x doubling
+SIZE = '900x600@2x'  # Mapbox caps a side at 1280 before the @2x doubling
 PADDING = 48
-TRACE = '5+fc4c02-0.9'   # width + colour - opacity, in Strava's orange
+TRACE = '5+fc4c02-0.9'  # width + colour - opacity, in Strava's orange
 
 
 @dataclass
@@ -43,8 +44,10 @@ class Map:
 
     def url(self, polyline: str) -> str:
         overlay = f'path-{TRACE}({quote(polyline, safe="")})'
-        return (f'{API}/{self.config.style}/static/{overlay}/auto/{SIZE}'
-                f'?padding={PADDING}&access_token={self.config.token}')
+        return (
+            f'{API}/{self.config.style}/static/{overlay}/auto/{SIZE}'
+            f'?padding={PADDING}&access_token={self.config.token}'
+        )
 
     def image(self, polyline: str) -> bytes:
         """The route on a basemap, as PNG bytes.

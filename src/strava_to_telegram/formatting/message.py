@@ -4,6 +4,7 @@ Messages are HTML: Telegram's own flavour, which allows only b/i/u/s/a/code/pre.
 Everything interpolated from Strava is escaped, because activity names are free
 text and an unescaped `&` is enough to make Telegram reject the whole message.
 """
+
 import hashlib
 from html import escape
 

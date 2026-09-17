@@ -1,15 +1,39 @@
 """Sport names and their emoji."""
+
 import re
 
 EMOJI = {
-    'Ride': '🚴', 'VirtualRide': '🚴', 'EBikeRide': '🚴', 'MountainBikeRide': '🚵',
-    'GravelRide': '🚵', 'Run': '🏃', 'VirtualRun': '🏃', 'TrailRun': '🏃',
-    'Walk': '🚶', 'Hike': '🥾', 'Swim': '🏊', 'StandUpPaddling': '🏄',
-    'Surfing': '🏄', 'Kayaking': '🛶', 'Canoeing': '🛶', 'Rowing': '🚣',
-    'WeightTraining': '🏋️', 'Workout': '🏋️', 'Crossfit': '🏋️', 'Yoga': '🧘',
-    'AlpineSki': '⛷️', 'BackcountrySki': '⛷️', 'NordicSki': '🎿',
-    'Snowboard': '🏂', 'IceSkate': '⛸️', 'Golf': '⛳', 'Tennis': '🎾',
-    'Soccer': '⚽', 'Badminton': '🏸', 'Skateboard': '🛹', 'Elliptical': '🏃',
+    'Ride': '🚴',
+    'VirtualRide': '🚴',
+    'EBikeRide': '🚴',
+    'MountainBikeRide': '🚵',
+    'GravelRide': '🚵',
+    'Run': '🏃',
+    'VirtualRun': '🏃',
+    'TrailRun': '🏃',
+    'Walk': '🚶',
+    'Hike': '🥾',
+    'Swim': '🏊',
+    'StandUpPaddling': '🏄',
+    'Surfing': '🏄',
+    'Kayaking': '🛶',
+    'Canoeing': '🛶',
+    'Rowing': '🚣',
+    'WeightTraining': '🏋️',
+    'Workout': '🏋️',
+    'Crossfit': '🏋️',
+    'Yoga': '🧘',
+    'AlpineSki': '⛷️',
+    'BackcountrySki': '⛷️',
+    'NordicSki': '🎿',
+    'Snowboard': '🏂',
+    'IceSkate': '⛸️',
+    'Golf': '⛳',
+    'Tennis': '🎾',
+    'Soccer': '⚽',
+    'Badminton': '🏸',
+    'Skateboard': '🛹',
+    'Elliptical': '🏃',
 }
 FALLBACK = '🏅'
 

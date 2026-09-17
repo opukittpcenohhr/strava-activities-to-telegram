@@ -103,10 +103,9 @@ changes on Strava.
 `AGENTS.md` holds the design decisions and constraints that changes must respect.
 Read it first.
 
-Running the tests:
+Running the tests and the style check:
 
 ```bash
 uv run --no-sync pytest
+uv run --no-sync black --check .
 ```
-
-`pytest` comes from the `dev` group, which `uv sync --no-dev` skips on the VM.

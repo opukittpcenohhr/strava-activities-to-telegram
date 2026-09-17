@@ -1,4 +1,5 @@
 """Strava API access, including transparent refresh of stored tokens."""
+
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,12 +12,13 @@ from .storage.database import Database
 from .utils.omegaconf_datetime import OmegaConfDateTime
 
 PHOTO_SIZE = 2048
-MAX_PHOTOS = 10          # Telegram's album limit
+MAX_PHOTOS = 10  # Telegram's album limit
 
 
 @dataclass(frozen=True)
 class Activity:
     """The activity fields used by the bridge, converted at the API boundary."""
+
     id: int
     start_date: datetime
     name: str | None = None
@@ -62,8 +64,10 @@ class Strava:
             raise RuntimeError('Authorize first: strava-to-telegram auth')
         if tokens['expires_at'] <= time.time() + 300:
             tokens = self.client.refresh_access_token(
-                client_id=self.config.client_id, client_secret=self.config.client_secret,
-                refresh_token=tokens['refresh_token'])
+                client_id=self.config.client_id,
+                client_secret=self.config.client_secret,
+                refresh_token=tokens['refresh_token'],
+            )
             self.db.tokens.set(tokens)
         self.client.access_token = tokens['access_token']
 
@@ -81,7 +85,8 @@ class Strava:
                 distance=data.get('distance'),
                 moving_time=data.get('moving_time'),
                 start_date_local=OmegaConfDateTime.parse(
-                    data.get('start_date_local'), field='activity.start_date_local'),
+                    data.get('start_date_local'), field='activity.start_date_local'
+                ),
                 photo_count=int(data.get('total_photo_count') or 0),
                 polyline=(data.get('map') or {}).get('summary_polyline') or None,
                 private=data.get('private'),

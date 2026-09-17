@@ -5,6 +5,7 @@ configuration is what rejects a bad value. What stays here is composition,
 parsing, path resolution, and the presence checks that depend on which command
 is about to run.
 """
+
 from dataclasses import dataclass, fields, is_dataclass, replace
 from collections.abc import Iterable
 from typing import Any, cast
@@ -65,8 +66,9 @@ def from_mapping(data: Any, base: Path, *, overrides: Iterable[str] = ()) -> Con
         # Dataclass schema enforces known fields and converts compatible scalar types.
         # Custom OmegaConfDateTime fields pass through to their section's __post_init__
         # for parsing and validation after interpolation and overrides.
-        merged = OmegaConf.merge(OmegaConf.structured(Config, flags={'allow_objects': True}), data,
-                                 OmegaConf.from_dotlist(list(overrides)))
+        merged = OmegaConf.merge(
+            OmegaConf.structured(Config, flags={'allow_objects': True}), data, OmegaConf.from_dotlist(list(overrides))
+        )
         missing = OmegaConf.missing_keys(merged)
         if missing:
             raise ValueError('Missing required settings: ' + ', '.join(sorted(missing)))

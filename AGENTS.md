@@ -85,4 +85,9 @@ reverse one silently.
 ```bash
 uv run --no-sync pytest
 uv run --no-sync mypy
+uv run --no-sync black --check .
 ```
+
+Style is whatever `[tool.black]` in `pyproject.toml` says; that file is the only
+place it is written down. Run `black .` rather than hand-formatting, and do not
+reflow code Black left alone.

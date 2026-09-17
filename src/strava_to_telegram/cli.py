@@ -15,15 +15,22 @@ from .sync import publish_last_activity, sync_once
 
 # pretty_exceptions_enable stays False: Typer's rich tracebacks render local
 # variables, and those hold the credentials loaded from config.yaml.
-app = typer.Typer(help='Sync Strava activities to Telegram.',
-                  no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False)
-Overrides = Annotated[list[str] | None, typer.Argument(
-    help='Config overrides: dotted.key=value (for example auth.port=9000).')]
+app = typer.Typer(
+    help='Sync Strava activities to Telegram.',
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_enable=False,
+)
+Overrides = Annotated[
+    list[str] | None, typer.Argument(help='Config overrides: dotted.key=value (for example auth.port=9000).')
+]
 
 
 @app.callback()
-def configure(ctx: typer.Context,
-              config: Annotated[Path, typer.Option('--config', help='YAML configuration file.')] = Path('config.yaml')) -> None:
+def configure(
+    ctx: typer.Context,
+    config: Annotated[Path, typer.Option('--config', help='YAML configuration file.')] = Path('config.yaml'),
+) -> None:
     ctx.obj = config
 
 
@@ -35,10 +42,7 @@ def command_config(ctx: typer.Context, overrides: list[str] | None) -> Config:
 
 def services(db: Database, config: Config) -> tuple[Strava, Map, Telegram, str]:
     """Activity source, map renderer, Telegram client, and destination chat."""
-    return (Strava(db, config.strava),
-            Map(config.map),
-            Telegram(config.telegram.bot_token),
-            config.telegram.chat)
+    return (Strava(db, config.strava), Map(config.map), Telegram(config.telegram.bot_token), config.telegram.chat)
 
 
 @app.command('auth')

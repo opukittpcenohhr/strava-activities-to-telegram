@@ -4,9 +4,9 @@ Logging must work before configuration exists, because failing to read the
 configuration is itself something to report. `start` installs a usable baseline at
 import time of the command; `apply` adjusts it once a configuration has loaded.
 """
+
 from dataclasses import dataclass
 import logging
-
 
 FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
