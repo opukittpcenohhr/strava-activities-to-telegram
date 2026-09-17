@@ -1,0 +1,32 @@
+# Override any field after the command: sync storage.database=data/preview.db
+# `???` marks a value you must supply. All other fields are required too; use
+# explicit null only for nullable ones such as sync.since.
+# Copy to config.yaml, then chmod 600 it: this file holds your credentials.
+# Relative paths resolve beside that file.
+storage:
+  database: data/activities.db
+
+strava:
+  client_id: ???  # Your numeric Strava application ID
+  client_secret: ???  # From your Strava API settings page
+
+telegram:
+  channel_id: ???  # Numeric channel ID, e.g. -1001234567890
+  bot_token: ???  # From BotFather
+
+sync:
+  # Replace unavailable activities with a notice; false leaves their posts untouched.
+  delete_removed_strava_activities_from_telegram: true
+  include_private: false  # Include private/only-me activities returned by Strava.
+  # Applied every run: null includes all accessible history.
+  # Existing mapped activities are updated regardless of this cutoff.
+  since: null  # Set a date, e.g. "2026-09-01", to limit new posts.
+
+auth:
+  host: 127.0.0.1
+  port: 8000
+
+logging:
+  # CRITICAL, ERROR, WARNING, INFO or DEBUG. DEBUG also prints a traceback
+  # when a command fails.
+  level: INFO

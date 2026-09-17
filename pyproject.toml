@@ -1,0 +1,34 @@
+[project]
+name = "strava-to-telegram"
+version = "0.1.0"
+description = "Sync Strava activities to a Telegram channel"
+requires-python = ">=3.12"
+dependencies = [
+    "stravalib>=2.4,<3",
+    "typer>=0.16,<1",
+    "omegaconf>=2.3,<3",
+    "pyTelegramBotAPI>=4.36,<5",
+]
+
+[project.scripts]
+strava-to-telegram = "strava_to_telegram.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/strava_to_telegram"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=9.1.1",
+]
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.12"
+disallow_untyped_defs = true
+enable_error_code = ["explicit-override"]
+ignore_missing_imports = true
